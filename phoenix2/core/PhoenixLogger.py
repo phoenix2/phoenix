@@ -276,7 +276,8 @@ class PhoenixLogger(object):
             return
 
         self.refreshScheduled = False
-        self.nextRefresh = time.time() + self.core.config.get('log', 'refresh',
+        self.nextRefresh = time.time() + self.core.config.get('general',
+                                                              'statusinterval',
                                                               float, 1.0)
 
         if self.core.connected:
