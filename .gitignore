@@ -1,0 +1,10 @@
+*.pyc
+*.pyo
+*.py~
+*.elf
+*.cfg
+*.log
+phoenix2/www
+MANIFEST
+build
+dist

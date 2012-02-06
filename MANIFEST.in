@@ -1,0 +1,4 @@
+recursive-include phoenix2 *.py *.cl
+recursive-include doc *.txt *.py
+include phoenix2/www/TODO
+include phoenix.py

@@ -1,0 +1,65 @@
+This is just a quick reference of all JSON-RPC calls available in the Phoenix 2
+server:
+
+getstatus() # Get general status on the server:
+{'uptime': seconds,
+ 'connection': {'type': ('rpc'|'rpclp'|'mmp'),
+                'connected': boolean,
+                'url': 'url'}
+ 'results': {'accepted': 12345,
+             'rejected': 12345}
+}
+
+
+getrawconfig() # Download the entire configuration file as a single string.
+setrawconfig(cfg) # Overwrite the configuration file with a string.
+
+listdevices() # Returns an array of devices in this format:
+{'id': minerID,
+ 'name': 'miner name',
+ 'status': ('running'|'suspended'|'disabled'),
+ 'rate': khash,
+ 'config': {'key1':'value1', 'key2':'value2'},
+ 'meta': {'key1':'value1', 'key2':'value2'},
+ 'uptime': seconds,
+ 'results': 24690
+}
+
+getlogs(skip, limit) # Return logs, skipping 'skip' logs (if skip is negative,
+                     # it will skip all but the  last abs(n) logs),
+                     # and limit result to 'limit' entries (or 0 for no limit)
+{'id': minerID,
+ 'timestamp': unix_time_seconds,
+ 'msg': 'Message as it appears in the console, everything but the [time] [id]',
+ 'type': ('result'|'fatal'|etc),
+ # if type=result
+ 'details': {'accepted': boolean,
+             'hash': 'hexadecimal_here'}
+ # if type=fatal, error, etc
+ 'details': {'error': 'Error message as from the kernel'}
+ ...
+}
+
+setconfig(section, variable, value) # Alter a single configuration option.
+getconfig(section, variable) # Retrive a configuration value.
+
+redetect(terminate) # Re-run autodetection (useful after changing the
+                    # autodetect config variable)
+                    # 'terminate' specifies whether to also forget about
+                    # autodetected kernels that don't meet with the new
+                    # autodetect rules.
+                    # It defaults to 'false' if not provided.
+
+restart(minerID) # Restart a single miner. This also refreshes the
+                 # configuration for that miner. Will not work for disabled
+                 # kernels (you will need to use start(minerID) for this)
+restart() # When used with no minerID, or minerID=null, it does it for every
+          # single running kernel.
+disable(minerID) # Shut down the kernel and mark it as disabled in the config.
+suspend(minerID) # Stop a miner temporarily. This is not saved in the config.
+                 # The miner will resume when Phoenix is restarted.
+suspend() # As with restart() - suspends every running kernel.
+start(minerID) # Resume a miner from suspend or disable.
+start() # Starts every suspended (but not disabled) kernel.
+
+shutdown() # Stop the running Phoenix process.
