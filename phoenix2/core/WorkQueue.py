@@ -139,9 +139,11 @@ class WorkQueue(object):
             self.queue.append(work)
 
         #if the queue is too short request more work
+        workRequested = False
         if self.checkQueue():
             if self.core.connection:
                 self.core.connection.requestWork()
+                workRequested = True
 
         #if there is a new block notify kernels that their work is now stale
         if newBlock:
@@ -155,7 +157,7 @@ class WorkQueue(object):
         #the queue, cache the size beforehand to avoid infinite loops.
         for i in range(len(self.deferredQueue)):
             df = self.deferredQueue.popleft()
-            d = self.fetchUnit()
+            d = self.fetchUnit(workRequested)
             d.chainDeferred(df)
 
         #clear the idle flag since we just added work to queue
@@ -297,12 +299,12 @@ class WorkQueue(object):
         # Return the new WU
         return newWU
 
-    def fetchUnit(self):
+    def fetchUnit(self, delayed = False):
         #if there is a unit in queue
         if len(self.queue) >= 1:
 
             #check if the queue has fallen below the desired size
-            if self.checkQueue(True):
+            if self.checkQueue(True) and (not delayed):
                 #Request more work to maintain minimum queue size
                 if self.core.connection:
                     self.core.connection.requestWork()
