@@ -14,7 +14,7 @@ setup(name='phoenix',
                                 ]},
       entry_points={
           'console_scripts': [
-              'phoenix = phoenix:main'
+              'phoenix = phoenix2:main'
           ]
       }
      )
