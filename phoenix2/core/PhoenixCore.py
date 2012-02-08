@@ -76,11 +76,10 @@ class PhoenixCore(object):
         self.startTime = time.time()
 
         self.discoverKernels()
+        self.startAllKernels()
         self.startAutodetect()
 
         self.setMeta('os', '%s %s' % (platform.system(), platform.version()))
-
-        self.startAllKernels()
 
         self.configChanged()
 
