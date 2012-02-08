@@ -144,10 +144,8 @@ class MiningKernel(opencl.MiningKernel):
                 name = device.name.replace('\x00','').strip()
 
                 # Check if the device is a CPU
-                cpunames = ['intel', 'amd', 'via', 'transmeta']
-                for cpuname in cpunames:
-                    if cpuname in name.lower():
-                        return (1, {'name': name, 'aggression': 0},
+                if device.get_info(cl.device_info.TYPE) == cl.device_type.CPU:
+                    return (1, {'name': name, 'aggression': 0},
                                 [devid, 'cpu:0'])
 
                 # Check if the device has CUDA support

@@ -80,15 +80,11 @@ class QueueReader(object):
                 pass
         self.dataQueue.put(StopIteration())
 
-    def _ranExecution(self, nr):
+    def _ranExecution(self, nr, dt):
         """An internal function called after an execution completes, with the
         time it took. Used to keep track of the time so kernels can use it to
         tune their execution times.
         """
-
-        now = time()
-        dt = now - self.startedAt
-        self.startedAt = now
 
         if dt > 0:
             self.interface.updateRate(int(nr.size/dt/1000), self.index)
@@ -177,7 +173,10 @@ class QueueReader(object):
         # If we just completed a range, we should tell the main thread.
         if self.currentData:
             # self.currentData[1] is the un-preprocessed NonceRange.
-            reactor.callFromThread(self._ranExecution, self.currentData[1])
+            now = time()
+            dt = now - self.startedAt
+            self.startedAt = now
+            reactor.callFromThread(self._ranExecution, self.currentData[1], dt)
 
         # Block for more data from the main thread. In 99% of cases, though,
         # there should already be something here.
