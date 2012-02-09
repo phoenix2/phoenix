@@ -38,7 +38,10 @@ class PhoenixConfig(object):
         self.sections = self._parse(self.text)
 
     def save(self):
-        open(self.filename, 'w').write(self.text)
+        try:
+            open(self.filename, 'w').write(self.text)
+        except IOError:
+            pass # Read-only filesystem?
 
     def set(self, section, var, value):
         section = section.lower().replace('#','').strip()
