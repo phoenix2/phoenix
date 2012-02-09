@@ -56,6 +56,9 @@ class PhoenixCore(object):
         self.queue = WorkQueue(self)
         self.rpc = PhoenixRPC(self)
 
+        self.pluginIntf = None # TODO
+        self.plugins = {}
+
         self.kernels = {}
         self.interfaces = WeakKeyDictionary()
         self.deviceIDs = []
@@ -75,7 +78,7 @@ class PhoenixCore(object):
         self.logger.log('Welcome to Phoenix ' + self.VERSION)
         self.startTime = time.time()
 
-        self.discoverKernels()
+        self.discoverPlugins()
         self.startAllKernels()
         self.startAutodetect()
 
@@ -97,19 +100,25 @@ class PhoenixCore(object):
                 kernel.stop()
         self.kernels = {}
 
-    def discoverKernels(self):
+    def discoverPlugins(self):
         if not hasattr(sys, 'frozen'):
-            kerndir = os.path.join(os.path.dirname(__file__), '../kernels')
+            kerndir = os.path.join(os.path.dirname(__file__), '../plugins')
         else:
-            kerndir = os.path.join(os.path.dirname(sys.executable), 'kernels')
+            kerndir = os.path.join(os.path.dirname(sys.executable), 'plugins')
         for name in os.listdir(kerndir):
+            if name.endswith('.pyo') or name.endswith('.pyc'):
+                if os.path.isfile(os.path.join(kerndir, name[:-1])):
+                    continue
             name = name.split('.',1)[0] # Strip off . and anything after...
             try:
                 file, filename, smt = imp.find_module(name, [kerndir])
-                kernelModule = imp.load_module(name, file, filename, smt)
-                self.kernelTypes[name] = kernelModule.MiningKernel
+                plugin = imp.load_module(name, file, filename, smt)
+                if hasattr(plugin, 'MiningKernel'):
+                    self.kernelTypes[name] = plugin.MiningKernel
+                else:
+                    self.plugins[name] = plugin.PhoenixPlugin(self.pluginIntf)
             except (ImportError, AttributeError):
-                self.logger.log('Failed to load kernel "%s"' % name)
+                self.logger.log('Failed to load plugin "%s"' % name)
 
     def startAutodetect(self):
         # NOTICE: It is legal to call this function more than once. If this
