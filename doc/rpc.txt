@@ -50,6 +50,10 @@ redetect(terminate) # Re-run autodetection (useful after changing the
                     # autodetect rules.
                     # It defaults to 'false' if not provided.
 
+switchto(backend) # Start mining on a new backend immediately. Use null
+                  # (or omit the argument) to go back to the configured
+                  # backend.
+
 restart(minerID) # Restart a single miner. This also refreshes the
                  # configuration for that miner. Will not work for disabled
                  # kernels (you will need to use start(minerID) for this)

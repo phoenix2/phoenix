@@ -166,6 +166,13 @@ class PhoenixRPC(Resource):
     def rpc_redetect(self, terminate=False):
         self.core.redetect(terminate)
 
+    def rpc_switchto(self, backend=None):
+        if backend is None:
+            backend = self.core.config.get('general', 'backend', str)
+        else:
+            backend = str(backend)
+        self.core.switchURL(backend)
+
     def _getminers(self):
         miners = [section for section in self.core.config.listsections()
                   if ':' in section]

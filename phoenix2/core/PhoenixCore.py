@@ -85,12 +85,12 @@ class PhoenixCore(object):
         self.setMeta('os', '%s %s' % (platform.system(), platform.version()))
 
         self.configChanged()
+        self.switchURL(self.config.get('general', 'backend', str))
 
         reactor.addSystemEventTrigger('before', 'shutdown', self._shutdown)
 
     def configChanged(self):
         self.rpc.start() # In case the ip/port changed...
-        self.switchURL(self.config.get('general', 'backend', str))
 
     def _shutdown(self):
         self.stopAutodetect()
