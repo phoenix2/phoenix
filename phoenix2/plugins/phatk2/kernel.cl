@@ -2,12 +2,10 @@
 
 #ifdef VECTORS4
 	typedef uint4 u;
-#else 
-	#ifdef VECTORS
-		typedef uint2 u;
-	#else
-		typedef uint u;
-	#endif
+#elif defined VECTORS
+	typedef uint2 u;
+#else
+	typedef uint u;
 #endif
 
 __constant uint K[64] = { 
@@ -149,11 +147,9 @@ void search(	const uint state0, const uint state1, const uint state2, const uint
 //Dummy Variable to prevent compiler from reordering between rounds
 	u t1;
 
-	//Vals[0]=state0;
 	Vals[1]=B1;
 	Vals[2]=C1;
 	Vals[3]=D1;
-	//Vals[4]=PreVal4;
 	Vals[5]=F1;
 	Vals[6]=G1;
 	Vals[7]=H1;
@@ -161,22 +157,18 @@ void search(	const uint state0, const uint state1, const uint state2, const uint
 	W[16] = W16;
 	W[17] = W17;
 
-#ifdef VECTORS4
-	//Less dependencies to get both the local id and group id and then add them
+#if defined VECTORS4
 	W[3] = base + (uint)(get_local_id(0)) * 4u + (uint)(get_group_id(0)) * (WORKSIZE * 4u);
-	uint r = rot(W[3].x,25u)^rot(W[3].x,14u)^((W[3].x)>>3U);
-	//Since only the 2 LSB is opposite between the nonces, we can save an instruction by flipping the 4 bits in W18 rather than the 1 bit in W3
+	uint r = rot(W[3].s0,25u)^rot(W[3].s0,14u)^((W[3].s0)>>3U);
 	W[18] = PreW20 + (u){r, r ^ 0x2004000U, r ^ 0x4008000U, r ^ 0x600C000U};
+#elif defined VECTORS
+	W[3] = base + (uint)(get_local_id(0)) * 2u + (uint)(get_group_id(0)) * (WORKSIZE * 2u);
+	uint r = rot(W[3].s0,25u)^rot(W[3].s0,14u)^((W[3].s0)>>3U);
+	W[18] = PreW20 + (u){r, r ^ 0x2004000U};
 #else
-	#ifdef VECTORS
-		W[3] = base + (uint)(get_local_id(0)) * 2u + (uint)(get_group_id(0)) * (WORKSIZE * 2u);
-		uint r = rot(W[3].x,25u)^rot(W[3].x,14u)^((W[3].x)>>3U);
-		W[18] = PreW20 + (u){r, r ^ 0x2004000U};
-	#else
-		W[3] = base + get_local_id(0) + get_group_id(0) * (WORKSIZE);
-		u r = rot(W[3],25u)^rot(W[3],14u)^((W[3])>>3U);
-		W[18] = PreW20 + r;
-	#endif
+	W[3] = base + get_local_id(0) + get_group_id(0) * (WORKSIZE);
+	uint r = rot(W[3],25u)^rot(W[3],14u)^((W[3])>>3U);
+	W[18] = PreW20 + r;
 #endif
 	//the order of the W calcs and Rounds is like this because the compiler needs help finding how to order the instructions
 
@@ -378,26 +370,23 @@ void search(	const uint state0, const uint state1, const uint state2, const uint
 	{
 		nonce = W[3].w;
 	}
+#elif defined VECTORS
+	if (v.x == g.x)
+	{
+		nonce = W[3].x;
+	}
+	if (v.y == g.y)
+	{
+		nonce = W[3].y;
+	}
 #else
-	#ifdef VECTORS
-		if (v.x == g.x)
-		{
-			nonce = W[3].x;
-		}
-		if (v.y == g.y)
-		{
-			nonce = W[3].y;
-		}
-	#else
-		if (v == g)
-		{
-			nonce = W[3];
-		}
-	#endif
+	if (v == g)
+	{
+		nonce = W[3];
+	}
 #endif
 	if(nonce)
 	{
-		//Faster to shift the nonce by 2 due to 4-DWORD addressing and does not add more collisions
 		output[WORKSIZE] = nonce;
 		output[get_local_id(0)] = nonce;
 	}

@@ -42,46 +42,46 @@ class KernelData(object):
     execution.
     """
 
-    def __init__(self, nonceRange, rateDivisor, aggression):
+    def __init__(self, nr, rateDivisor, aggression):
         # Prepare some raw data, converting it into the form that the OpenCL
         # function expects.
         data = np.array(
-               unpack('IIII', nonceRange.unit.data[64:]), dtype=np.uint32)
+               unpack('IIII', nr.unit.data[64:]), dtype=np.uint32)
 
         # get the number of iterations from the aggression and size
-        self.iterations = int(nonceRange.size / (1 << aggression))
+        self.iterations = int(nr.size / (1 << aggression))
         self.iterations = max(1, self.iterations)
 
         #set the size to pass to the kernel based on iterations and vectors
-        self.size = (nonceRange.size / rateDivisor) / self.iterations
+        self.size = (nr.size / rateDivisor) / self.iterations
 
         #compute bases for each iteration
         self.base = [None] * self.iterations
         for i in range(self.iterations):
             if rateDivisor == 1:
                 self.base[i] = pack('I',
-                    ((nonceRange.base) + (i * self.size * rateDivisor)))
+                    (nr.base + (i * self.size * rateDivisor)))
             if rateDivisor == 2:
                 self.base[i] = pack('II',
-                    ((nonceRange.base) + (i * self.size * rateDivisor))
-                    , (1 + (nonceRange.base) + (i * self.size * rateDivisor)))
+                    (nr.base + (i * self.size * rateDivisor))
+                    , (1 + nr.base + (i * self.size * rateDivisor)))
             if rateDivisor == 4:
                 self.base[i] = pack('IIII',
-                    ((nonceRange.base) + (i * self.size * rateDivisor))
-                    , (1 + (nonceRange.base) + (i * self.size * rateDivisor))
-                    , (2 + (nonceRange.base) + (i * self.size * rateDivisor))
-                    , (3 + (nonceRange.base) + (i * self.size * rateDivisor))
+                    ((nr.base) + (i * self.size * rateDivisor))
+                    , (1 + nr.base + (i * self.size * rateDivisor))
+                    , (2 + nr.base + (i * self.size * rateDivisor))
+                    , (3 + nr.base + (i * self.size * rateDivisor))
                     )
         #set up state and precalculated static data
         self.state = np.array(
-            unpack('IIIIIIII', nonceRange.unit.midstate), dtype=np.uint32)
+            unpack('IIIIIIII', nr.unit.midstate), dtype=np.uint32)
         self.state2 = np.array(unpack('IIIIIIII',
-            calculateMidstate(nonceRange.unit.data[64:80] +
+            calculateMidstate(nr.unit.data[64:80] +
                 '\x00\x00\x00\x80' + '\x00'*40 + '\x80\x02\x00\x00',
-                nonceRange.unit.midstate, 3)), dtype=np.uint32)
+                nr.unit.midstate, 3)), dtype=np.uint32)
         self.state2 = np.array(
             list(self.state2)[3:] + list(self.state2)[:3], dtype=np.uint32)
-        self.nr = nonceRange
+        self.nr = nr
 
         self.f = np.zeros(9, np.uint32)
         self.calculateF(data)
@@ -206,8 +206,8 @@ class MiningKernel(opencl.MiningKernel):
                     data.f[5],data.f[6],
                     data.f[7],data.f[8],
                     self.output_buf)
-                cl.enqueue_read_buffer(
-                    self.commandQueue, self.output_buf, self.output)
+                cl.enqueue_read_buffer(self.commandQueue, self.output_buf,
+                                       self.output, is_blocking=False)
                 self.commandQueue.finish()
 
                 # The OpenCL code will flag the last item in the output buffer

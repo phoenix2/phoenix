@@ -2,12 +2,10 @@
 
 #ifdef VECTORS4
 	typedef uint4 u;
+#elif defined VECTORS
+	typedef uint2 u;
 #else
-	#ifdef VECTORS
-		typedef uint2 u;
-	#else
-		typedef uint u;
-	#endif
+	typedef uint u;
 #endif
 
 __constant uint K[64] = { 
@@ -61,10 +59,20 @@ __kernel void search(	const uint state0, const uint state1, const uint state2, c
 	u A,B,C,D,E,F,G,H;
 	u nonce;
 #ifdef VECTORS4
-	nonce = ((base + get_global_id(0))<<2) + (uint4)(0, 1, 2, 3);
+	#ifdef GOFFSET
+		nonce = (get_global_id(0)<<2) + (u)(0, 1, 2, 3);
+	#else
+		nonce = ((base + get_global_id(0))<<2) + (u)(0, 1, 2, 3);
+	#endif
+#elif defined VECTORS
+	#ifdef GOFFSET
+		nonce = (get_global_id(0)<<1) + (u)(0, 1);
+	#else
+		nonce = ((base + get_global_id(0))<<1) + (u)(0, 1);
+	#endif
 #else
-	#ifdef VECTORS
-		nonce = ((base + get_global_id(0))<<1) + (uint2)(0, 1);
+	#ifdef GOFFSET
+		nonce = get_global_id(0);
 	#else
 		nonce = base + get_global_id(0);
 	#endif
@@ -291,6 +299,7 @@ __kernel void search(	const uint state0, const uint state1, const uint state2, c
 	H = H + D + (rotr(A, 6) ^ rotr(A, 11) ^ rotr(A, 25)) + Ch(A, B, C) + K[60] + W12;
 
 	H+=0x5be0cd19U;
+
 #ifdef VECTORS4
 	if (H.x == 0)
 	{
@@ -308,21 +317,19 @@ __kernel void search(	const uint state0, const uint state1, const uint state2, c
 	{
 		output[WORKSIZE] = output[get_local_id(0)] = nonce.w;
 	}
+#elif defined VECTORS
+	if (H.x == 0)
+	{
+		output[WORKSIZE] = output[get_local_id(0)] = nonce.x;
+	}
+	else if (H.y == 0)
+	{
+		output[WORKSIZE] = output[get_local_id(0)] = nonce.y;
+	}
 #else
-	#ifdef VECTORS
-		if (H.x == 0)
-		{
-			output[WORKSIZE] = output[get_local_id(0)] = nonce.x;
-		}
-		else if (H.y == 0)
-		{
-			output[WORKSIZE] = output[get_local_id(0)] = nonce.y;
-		}
-	#else
-		if (H == 0)
-		{
-			output[WORKSIZE] = output[get_local_id(0)] = nonce;
-		}
-	#endif
+	if (H == 0)
+	{
+		output[WORKSIZE] = output[get_local_id(0)] = nonce;
+	}
 #endif
 }

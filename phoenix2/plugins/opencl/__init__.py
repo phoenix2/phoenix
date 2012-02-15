@@ -26,6 +26,7 @@ import os
 from math import log
 from hashlib import md5
 from struct import pack, unpack
+from inspect import getargspec
 from twisted.internet import reactor
 
 from phoenix2.util.Midstate import calculateMidstate
@@ -38,35 +39,40 @@ class KernelData(object):
     execution.
     """
 
-    def __init__(self, nonceRange, rateDivisor, aggression):
+    def __init__(self, nr, rateDivisor, aggression, gOffset):
         # Prepare some raw data, converting it into the form that the OpenCL
         # function expects.
         data = np.array(
-               unpack('IIII', nonceRange.unit.data[64:]), dtype=np.uint32)
+               unpack('IIII', nr.unit.data[64:]), dtype=np.uint32)
 
         # get the number of iterations from the aggression and size
-        self.iterations = int(nonceRange.size / (1 << aggression))
+        self.iterations = int(nr.size / (1 << aggression))
         self.iterations = max(1, self.iterations)
 
         #set the size to pass to the kernel based on iterations and vectors
-        self.size = (nonceRange.size / rateDivisor) / self.iterations
+        self.size = (nr.size / rateDivisor) / self.iterations
 
         #compute bases for each iteration
         self.base = [None] * self.iterations
+        if gOffset:
+            self.baseNum = [None] * self.iterations
+
         for i in range(self.iterations):
+            if gOffset:
+                self.baseNum[i] = (nr.base / rateDivisor) + (i * self.size)
             self.base[i] = pack('I',
-                (nonceRange.base/rateDivisor) + (i * self.size))
+                (nr.base/rateDivisor) + (i * self.size))
 
         #set up state and precalculated static data
         self.state = np.array(
-            unpack('IIIIIIII', nonceRange.unit.midstate), dtype=np.uint32)
+            unpack('IIIIIIII', nr.unit.midstate), dtype=np.uint32)
         self.state2 = np.array(unpack('IIIIIIII',
-            calculateMidstate(nonceRange.unit.data[64:80] +
+            calculateMidstate(nr.unit.data[64:80] +
                 '\x00\x00\x00\x80' + '\x00'*40 + '\x80\x02\x00\x00',
-                nonceRange.unit.midstate, 3)), dtype=np.uint32)
+                nr.unit.midstate, 3)), dtype=np.uint32)
         self.state2 = np.array(
             list(self.state2)[3:] + list(self.state2)[:3], dtype=np.uint32)
-        self.nr = nonceRange
+        self.nr = nr
         self.f = np.zeros(8, np.uint32)
         self.calculateF(data)
 
@@ -110,6 +116,9 @@ class MiningKernel(object):
         'AGGRESSION', int, default=5, advanced=False,
         help='Exponential factor indicating how much work to run '
         'per OpenCL execution')
+    GOFFSET = KernelOption(
+        'GOFFSET', bool, default=True, advanced=True,
+        help='Use OpenCL 1.1 global offset parameter.')
     WORKSIZE = KernelOption(
         'WORKSIZE', int, default=None, advanced=True,
         help='The worksize to use when executing CL kernels.')
@@ -151,6 +160,11 @@ class MiningKernel(object):
 
         # Setup device
         self.platform, self.device = self.getDevice(self.DeviceID)
+
+        # Check for OpenCL >= 1.1 and set flag if true
+        version = str(self.platform.get_info(cl.platform_info.VERSION))
+        if not 'OpenCL 1.0' in version:
+            self.hasOpenCL11 = True
 
         # Make sure the user didn't enter something stupid
         if self.platform == None or self.device == None:
@@ -280,6 +294,13 @@ class MiningKernel(object):
         """Load the kernel and initialize the device."""
         self.context = cl.Context([device], None, None)
 
+        # This function allows older PyOpenCL versions to work (<=0.92)
+        def _build(kernel, defines):
+            if 'cache_dir' in getargspec(kernel.build).args:
+                return kernel.build(defines, cache_dir=False)
+            else:
+                return kernel.build(defines)
+
         # get the maximum worksize of the device
         maxWorkSize = self.device.get_info(cl.device_info.MAX_WORK_GROUP_SIZE)
 
@@ -321,6 +342,14 @@ class MiningKernel(object):
             if self.BFI_INT:
                 self.BFI_INT = False
 
+        # Global offset parameter
+        if self.GOFFSET:
+            # If OpenCL >= 1.1 is available use global offset parameter
+            if self.hasOpenCL11:
+                self.defines += ' -DGOFFSET'
+            else:
+                self.GOFFSET = False
+
         # Locate and read the OpenCL source code in the kernel's directory.
         kernelFileDir, pyfile = self.getKernelPath()
         kernelFilePath = os.path.join(kernelFileDir, 'kernel.cl')
@@ -349,8 +378,8 @@ class MiningKernel(object):
 
         try:
             if binary is None:
-                self.kernel = cl.Program(
-                    self.context, kernel).build(self.defines)
+                self.kernel = cl.Program(self.context, kernel)
+                self.kernel = _build(self.kernel, self.defines)
 
                 #apply BFI_INT if enabled
                 if self.BFI_INT:
@@ -361,9 +390,9 @@ class MiningKernel(object):
                     self.interface.debug("Applied BFI_INT patch")
 
                     #reload the kernel with the patched binary
-                    self.kernel = cl.Program(
-                        self.context, [device],
-                        [binaryData]).build(self.defines)
+                    self.kernel = cl.Program(self.context,
+                                            [device], [binaryData])
+                    self.kernel = _build(self.kernel, self.defines)
 
                 #write the kernel binaries to file
                 try:
@@ -374,8 +403,8 @@ class MiningKernel(object):
                     pass # Oh well, maybe the filesystem is readonly.
             else:
                 binaryData = binary.read()
-                self.kernel = cl.Program(
-                    self.context, [device], [binaryData]).build(self.defines)
+                self.kernel = cl.Program(self.context, [device], [binaryData])
+                self.kernel = _build(self.kernel, self.defines)
 
         except cl.LogicError:
             self.interface.debugException()
@@ -387,9 +416,6 @@ class MiningKernel(object):
             return
         finally:
             if binary: binary.close()
-
-        #unload the compiler to reduce memory usage
-        cl.unload_compiler()
 
     def start(self):
         """Phoenix wants the kernel to start."""
@@ -424,20 +450,21 @@ class MiningKernel(object):
         if self.FASTLOOP:
             self.updateIterations()
 
-        kd = KernelData(nr, self.rateDivisor, self.AGGRESSION)
+        kd = KernelData(nr, self.rateDivisor, self.AGGRESSION, self.GOFFSET)
         return kd
 
     def postprocess(self, output, nr):
         # Scans over a single buffer produced as a result of running the
-        # OpenCL kernel on the device. This is done outside of the mining thread
-        # for efficiency reasons.
+        # OpenCL kernel on the device. This is done outside of the mining
+        # thread for efficiency reasons.
 
         # Iterate over only the first WORKSIZE items. Exclude the last item
         # which is a duplicate of the most recently-found nonce.
         for i in xrange(self.WORKSIZE):
             if output[i]:
                 if not self.interface.foundNonce(nr.unit, int(output[i])):
-                    hash = self.interface.calculateHash(nr.unit, int(output[i]))
+                    hash = self.interface.calculateHash(
+                                                    nr.unit, int(output[i]))
                     if not hash.endswith('\x00\x00\x00\x00'):
                         self.interface.error('Device returned hash with '
                             'difficulty < 1')
@@ -445,6 +472,7 @@ class MiningKernel(object):
     def mineThread(self):
         for data in self.qr:
             for i in range(data.iterations):
+                offset = (data.baseNum[i],) if self.GOFFSET else None
                 self.kernel.search(
                     self.commandQueue, (data.size, ), (self.WORKSIZE, ),
                     data.state[0], data.state[1], data.state[2], data.state[3],
@@ -454,9 +482,9 @@ class MiningKernel(object):
                     data.base[i],
                     data.f[0], data.f[1], data.f[2], data.f[3],
                     data.f[4], data.f[5], data.f[6], data.f[7],
-                    self.output_buf)
-                cl.enqueue_read_buffer(
-                    self.commandQueue, self.output_buf, self.output)
+                    self.output_buf, global_offset=offset)
+                cl.enqueue_read_buffer(self.commandQueue, self.output_buf,
+                                       self.output, is_blocking=False)
                 self.commandQueue.finish()
 
                 # The OpenCL code will flag the last item in the output buffer
