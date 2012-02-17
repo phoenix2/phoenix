@@ -199,7 +199,8 @@ class KernelInterface(object):
 
         # Check if the block has changed while this NonceRange was being
         # processed by the kernel. If so, don't send it to the server.
-        if wu.isStale:
+        if wu.isStale and not getattr(self.core.connection,
+                                      'submitold', False):
             return False
 
         if self.checkTarget(hash, wu.target):

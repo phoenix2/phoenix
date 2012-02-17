@@ -281,6 +281,7 @@ class RPCClient(ClientBase):
 
     EXTENSIONS = ' '.join([
         'midstate',
+        'submitold',
         'rollntime'
     ])
 
@@ -300,6 +301,7 @@ class RPCClient(ClientBase):
         self.longPoller = None # Gets created later...
         self.disconnected = False
         self.saidConnected = False
+        self.submitold = False
         self.block = None
         self.setupMaxtime()
 
@@ -395,6 +397,10 @@ class RPCClient(ClientBase):
             return;
 
         rollntime = headers.get('x-roll-ntime')
+
+        submitold = work.get('submitold')
+        if submitold is not None:
+            self.submitold = bool(submitold)
 
         if rollntime:
             if rollntime.lower().startswith('expire='):
