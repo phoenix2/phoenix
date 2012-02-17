@@ -95,7 +95,7 @@ class HTTPBase(object):
             response = self.connection.getresponse()
             headers = response.getheaders()
             data = response.read()
-            return (headers, data)
+            return dict(headers), data
         except (httplib.HTTPException, socket.error):
             self.closeConnection()
             raise
@@ -187,7 +187,7 @@ class RPCPoller(HTTPBase):
 
         (headers, data) = response
         result = self.parse(data)
-        defer.returnValue((dict(headers), result))
+        defer.returnValue((headers, result))
 
     @classmethod
     def parse(cls, data):
@@ -394,10 +394,7 @@ class RPCClient(ClientBase):
         if work is None:
             return;
 
-        try:
-            rollntime = headers.get('x-roll-ntime')
-        except Exception:
-            rollntime = None
+        rollntime = headers.get('x-roll-ntime')
 
         if rollntime:
             if rollntime.lower().startswith('expire='):
