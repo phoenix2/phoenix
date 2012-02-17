@@ -181,7 +181,8 @@ class RPCPoller(HTTPBase):
                 'Authorization': self.root.auth,
                 'User-Agent': self.root.version,
                 'Content-Type': 'application/json',
-                'X-Work-Identifier': '1'
+                'X-Work-Identifier': '1',
+                'X-Mining-Extensions': self.root.EXTENSIONS
             })
 
         (headers, data) = response
@@ -235,7 +236,8 @@ class LongPoller(HTTPBase):
                 {
                     'Authorization': self.root.auth,
                     'User-Agent': self.root.version,
-                    'X-Work-Identifier': '1'
+                    'X-Work-Identifier': '1',
+                    'X-Mining-Extensions': self.root.EXTENSIONS
                 })
             d.addBoth(self._requestComplete)
 
@@ -276,6 +278,11 @@ class LongPoller(HTTPBase):
 
 class RPCClient(ClientBase):
     """The actual root of the whole RPC client system."""
+
+    EXTENSIONS = ' '.join([
+        'midstate',
+        'rollntime'
+    ])
 
     def __init__(self, handler, url):
         self.handler = handler
@@ -389,7 +396,7 @@ class RPCClient(ClientBase):
 
         try:
             rollntime = headers.get('x-roll-ntime')
-        except:
+        except Exception:
             rollntime = None
 
         if rollntime:
