@@ -66,10 +66,7 @@ class PhoenixRPC(Resource):
         if request.method == 'POST' and request.path == '/':
             return self
         else:
-            if not hasattr(sys, 'frozen'):
-                docroot = os.path.join(os.path.dirname(__file__), '../www')
-            else:
-                docroot = os.path.join(os.path.dirname(sys.executable), 'www')
+            docroot = os.path.join(self.core.basedir, 'www')
             root = File(self.core.config.get('web', 'root', str, docroot))
             root.processors = {'.rpy': script.ResourceScript}
             return root.getChild(name, request)

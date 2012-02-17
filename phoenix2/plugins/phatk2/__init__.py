@@ -35,7 +35,8 @@ from phoenix2.util.QueueReader import QueueReader
 from phoenix2.core.KernelInterface import *
 from phoenix2.util.BFIPatcher import *
 
-opencl = sys.modules['opencl']
+# Yes, this behaves exactly like an import statement...
+importPlugin('opencl')
 
 class KernelData(object):
     """This class is a container for all the data required for a single kernel

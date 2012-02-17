@@ -19,6 +19,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+import sys
 import imp
 import os
 import platform
@@ -51,10 +52,17 @@ class PhoenixCore(object):
         self.connected = False
         self.connectionType = 'none'
 
+        if not hasattr(sys, 'frozen'):
+            self.basedir = os.path.dirname(os.path.dirname(__file__))
+        else:
+            self.basedir = os.path.dirname(sys.executable)
+
         self.config = PhoenixConfig(cfgFilename)
         self.logger = PhoenixLogger(self)
         self.queue = WorkQueue(self)
         self.rpc = PhoenixRPC(self)
+
+        self.pluginModules = {}
 
         self.pluginIntf = None # TODO
         self.plugins = {}
@@ -100,25 +108,44 @@ class PhoenixCore(object):
                 kernel.stop()
         self.kernels = {}
 
+    def loadPlugin(self, name, silent=False):
+        if name in self.pluginModules:
+            return
+
+        plugindir = os.path.join(self.basedir, 'plugins')
+
+        def importPlugin(name):
+            self.loadPlugin(name, silent=True)
+            if name not in self.pluginModules:
+                raise ImportError('Dependency on a plugin that failed to load')
+            else:
+                # Inject it into the caller's namespace rather than return it.
+                callerNamespace = sys._getframe().f_back.f_locals
+                callerNamespace[name] = self.pluginModules[name]
+
+        import __builtin__
+        __builtin__.importPlugin = importPlugin
+
+        try:
+            file, filename, smt = imp.find_module(name, [plugindir])
+            plugin = imp.load_module(name, file, filename, smt)
+            self.pluginModules[name] = plugin
+            if hasattr(plugin, 'MiningKernel'):
+                self.kernelTypes[name] = plugin.MiningKernel
+            else:
+                self.plugins[name] = plugin.PhoenixPlugin(self.pluginIntf)
+        except (ImportError, AttributeError):
+            if not silent:
+                self.logger.log('Failed to load plugin "%s"' % name)
+
     def discoverPlugins(self):
-        if not hasattr(sys, 'frozen'):
-            kerndir = os.path.join(os.path.dirname(__file__), '../plugins')
-        else:
-            kerndir = os.path.join(os.path.dirname(sys.executable), 'plugins')
-        for name in os.listdir(kerndir):
+        plugindir = os.path.join(self.basedir, 'plugins')
+        for name in os.listdir(plugindir):
             if name.endswith('.pyo') or name.endswith('.pyc'):
-                if os.path.isfile(os.path.join(kerndir, name[:-1])):
+                if os.path.isfile(os.path.join(plugindir, name[:-1])):
                     continue
             name = name.split('.',1)[0] # Strip off . and anything after...
-            try:
-                file, filename, smt = imp.find_module(name, [kerndir])
-                plugin = imp.load_module(name, file, filename, smt)
-                if hasattr(plugin, 'MiningKernel'):
-                    self.kernelTypes[name] = plugin.MiningKernel
-                else:
-                    self.plugins[name] = plugin.PhoenixPlugin(self.pluginIntf)
-            except (ImportError, AttributeError):
-                self.logger.log('Failed to load plugin "%s"' % name)
+            self.loadPlugin(name)
 
     def startAutodetect(self):
         # NOTICE: It is legal to call this function more than once. If this
