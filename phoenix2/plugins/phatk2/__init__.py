@@ -124,7 +124,7 @@ class KernelData(object):
 
 # phatk2 is implemented by inheriting from opencl and then overriding the
 # nessesary functions. See kernels/opencl to see the rest of the code.
-class MiningKernel(opencl.MiningKernel):
+class PhoenixKernel(opencl.PhoenixKernel):
     """A Phoenix Miner-compatible OpenCL kernel created by Phateus."""
 
     # This must be manually set for Git

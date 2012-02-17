@@ -14,7 +14,7 @@ from phoenix2.core.KernelInterface import KernelOption
 
 # This class needs to be defined in all Phoenix 2 kernels. The required
 # functions are __init__, start, and stop. Everything else is optional.
-class MiningKernel(object):
+class PhoenixKernel(object):
     # Here you can define options that the kernel will accept from the
     # configuration file.
     GREETING = KernelOption('greeting', str, default='',

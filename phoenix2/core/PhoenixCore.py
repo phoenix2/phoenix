@@ -130,8 +130,8 @@ class PhoenixCore(object):
             file, filename, smt = imp.find_module(name, [plugindir])
             plugin = imp.load_module(name, file, filename, smt)
             self.pluginModules[name] = plugin
-            if hasattr(plugin, 'MiningKernel'):
-                self.kernelTypes[name] = plugin.MiningKernel
+            if hasattr(plugin, 'PhoenixKernel'):
+                self.kernelTypes[name] = plugin.PhoenixKernel
             else:
                 self.plugins[name] = plugin.PhoenixPlugin(self.pluginIntf)
         except (ImportError, AttributeError):

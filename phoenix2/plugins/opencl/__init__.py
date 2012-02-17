@@ -100,7 +100,7 @@ class KernelData(object):
             (self.state2[5] | self.state2[6]))))
 
 
-class MiningKernel(object):
+class PhoenixKernel(object):
     """A Phoenix Miner-compatible OpenCL kernel."""
 
     VECTORS = KernelOption(
