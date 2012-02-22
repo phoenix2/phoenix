@@ -3,7 +3,7 @@
 from setuptools import setup, find_packages
 
 setup(name='phoenix',
-      version='2.0.0-rc1',
+      version='2.0.0-rc2',
       description='Phoenix Bitcoin Miner',
       author='CFSworks & jedi95',
       url='http://github.com/phoenix2',
