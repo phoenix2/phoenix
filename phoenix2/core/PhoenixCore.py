@@ -41,9 +41,8 @@ class PhoenixCore(object):
     """The root-level object of a Phoenix mining instance."""
 
     # This must be manually set for Git
-    VER = (2, 0, 0)
-    REVISION = reduce(lambda x,y: x*100+y, VER)
-    VERSION = 'v%s-rc1' % '.'.join(str(x) for x in VER)
+    VER = (2, 0, 0, '-rc1')
+    VERSION = 'v%s.%s.%s%s' % VER
 
     def __init__(self, cfgFilename='phoenix.cfg'):
         self.kernelTypes = {}

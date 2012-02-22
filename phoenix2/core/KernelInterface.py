@@ -104,13 +104,13 @@ class KernelInterface(object):
             self.fatal('Option %s expects a value of type %s!' %
                        (name, type.__name__))
 
-    def getRevision(self):
-        """Return the Phoenix core revision, so that kernels can require a
-        minimum revision before operating (such as if they rely on a certain
-        feature added in a certain revision)
+    def getVersion(self):
+        """Return the Phoenix core version, as a 4-tuple, so that kernels can
+        require a minimum version before operating (such as if they rely on a
+        certain feature added in a certain version)
         """
 
-        return self.core.REVISION
+        return self.core.VER
 
     def setMeta(self, var, value):
         """Set metadata for this kernel."""
