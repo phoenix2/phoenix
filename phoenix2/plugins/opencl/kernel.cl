@@ -43,8 +43,8 @@ __constant uint K[64] = {
 	// Ma can also be implemented in terms of BFI_INT...
 	#define Ma(x, y, z) amd_bytealign(((u)z^(u)x), (u)y, (u)x)
 #else
-	#define Ch(x, y, z) bitselect((u)z, (u)y, (u)x)
-	#define Ma(x, y, z) bitselect((u)x, (u)y, ((u)z^(u)x))
+	#define Ch(x, y, z) ((u)z ^ ((u)x & ((u)y ^ (u)z)))
+	#define Ma(x, y, z) (((u)x & (u)z) | ((u)y & ((u)x | (u)z)))
 #endif
 
 __kernel void search(	const uint state0, const uint state1, const uint state2, const uint state3,
