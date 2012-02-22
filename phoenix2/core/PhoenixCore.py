@@ -419,7 +419,19 @@ class PhoenixCore(object):
 
     # Connection callback handlers
     def onFailure(self):
-        self.logger.log("Couldn't connect to server, retrying...")
+        backups = self.config.get('general', 'backups', str, '').split()
+        backups.insert(0, self.config.get('general', 'backend', str, ''))
+        try:
+            index = backups.index(self.connectionURL)
+        except ValueError:
+            index = -1
+        nextBackend = backups[(index+1)%len(backups)]
+        if nextBackend == self.connectionURL:
+            self.logger.log("Couldn't connect to server, retrying...")
+        else:
+            self.logger.log("Couldn't connect to server, switching backend...")
+            self.switchURL(nextBackend)
+
     def onConnect(self):
         if not self.connected:
             self.logger.dispatch(ConnectionLog(True, self.connectionURL))
