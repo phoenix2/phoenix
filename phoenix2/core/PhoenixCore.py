@@ -26,7 +26,7 @@ import platform
 import time
 from weakref import WeakKeyDictionary
 
-from twisted.internet import reactor
+from twisted.internet import reactor, task, defer
 
 from .. import backend
 from ..backend.MMPProtocol import MMPClient
@@ -51,6 +51,7 @@ class PhoenixCore(object):
         self.connectionURL = None
         self.connected = False
         self.connectionType = 'none'
+        self.failbackLoop = None
 
         if not hasattr(sys, 'frozen'):
             self.basedir = os.path.dirname(os.path.dirname(__file__))
@@ -268,7 +269,11 @@ class PhoenixCore(object):
 
         self.connectionURL = url
 
-        if url is None:
+        if self.failbackLoop:
+            self.failbackLoop.stop()
+            self.failbackLoop = None
+
+        if not url:
             return
 
         self.connection = backend.openURL(url, self)
@@ -417,6 +422,14 @@ class PhoenixCore(object):
             self.logger.dispatch(RateUpdateLog(0))
             self.setMeta('rate', 0)
 
+    @defer.inlineCallbacks
+    def attemptFailback(self):
+        backendURL = self.config.get('general', 'backend', str, '')
+        ok = yield backend.testURL(backendURL)
+        if ok:
+            self.logger.log('Primary backend is available, switching back...')
+            self.switchURL(backendURL)
+
     # Connection callback handlers
     def onFailure(self):
         backups = self.config.get('general', 'backups', str, '').split()
@@ -425,12 +438,18 @@ class PhoenixCore(object):
             index = backups.index(self.connectionURL)
         except ValueError:
             index = -1
-        nextBackend = backups[(index+1)%len(backups)]
+        nextIndex = (index+1)%len(backups)
+        nextBackend = backups[nextIndex]
         if nextBackend == self.connectionURL:
             self.logger.log("Couldn't connect to server, retrying...")
         else:
             self.logger.log("Couldn't connect to server, switching backend...")
             self.switchURL(nextBackend)
+            if nextIndex != 0:
+                assert not self.failbackLoop
+                self.failbackLoop = task.LoopingCall(self.attemptFailback)
+                self.failbackLoop.start(self.config.get('general', 'failback',
+                                                        int, 600))
 
     def onConnect(self):
         if not self.connected:
