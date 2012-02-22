@@ -425,6 +425,8 @@ class PhoenixCore(object):
     def attemptFailback(self):
         backendURL = self.config.get('general', 'backend', str, '')
         ok = yield backend.testURL(backendURL)
+        if not self.failbackLoop:
+            return
         if ok:
             self.logger.log('Primary backend is available, switching back...')
             self.switchURL(backendURL)
@@ -446,9 +448,11 @@ class PhoenixCore(object):
             self.switchURL(nextBackend)
             if nextIndex != 0:
                 assert not self.failbackLoop
-                self.failbackLoop = task.LoopingCall(self.attemptFailback)
-                self.failbackLoop.start(self.config.get('general', 'failback',
-                                                        int, 600))
+                failbackInterval = self.config.get('general', 'failback',
+                                                   int, 600)
+                if failbackInterval:
+                    self.failbackLoop = task.LoopingCall(self.attemptFailback)
+                    self.failbackLoop.start(failbackInterval)
 
     def onConnect(self):
         if not self.connected:
