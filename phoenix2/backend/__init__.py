@@ -21,6 +21,8 @@
 
 import urlparse
 
+from twisted.internet.defer import Deferred
+
 from MMPProtocol import MMPClient
 from RPCProtocol import RPCClient
 
@@ -41,3 +43,40 @@ def openURL(url, handler):
         return RPCClient(handler, parsed)
     else:
         raise ValueError('Unknown protocol: ' + parsed.scheme)
+
+class TestHandler(object):
+    def __init__(self, d):
+        self.d = d
+        self.conn = None
+
+    def test(self, url):
+        self.conn = openURL(url, self)
+        self.conn.connect()
+
+    def onConnect(self):
+        if not self.conn: return
+        self.d.callback(True)
+        self.conn.disconnect()
+        self.conn = None
+
+    def onFailure(self):
+        if not self.conn: return
+        self.d.callback(False)
+        self.conn.disconnect()
+        self.conn = None
+
+    def _dummy(self, *args): pass
+    def __getattr__(self, attr):
+        if attr.startswith('on'):
+            return self._dummy
+
+
+def testURL(url):
+    """Return a Deferred specifying whether this URL is available or not."""
+
+    d = Deferred()
+
+    testHandler = TestHandler(d)
+    testHandler.test(url)
+
+    return d
