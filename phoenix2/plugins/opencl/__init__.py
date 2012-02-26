@@ -498,5 +498,5 @@ class PhoenixKernel(object):
                     self.output.copy(), data.nr)
 
                     self.output.fill(0)
-                    cl.enqueue_write_buffer(
-                        self.commandQueue, self.output_buf, self.output)
+                    cl.enqueue_write_buffer(self.commandQueue, self.output_buf,
+                                            self.output, is_blocking=False)
