@@ -165,7 +165,7 @@ class PhoenixKernel(object):
         version = str(self.platform.get_info(cl.platform_info.VERSION))
         if not 'OpenCL 1.0' in version:
             self.hasOpenCL11 = True
-        else
+        else:
             self.hasOpenCL11 = False
 
         # Make sure the user didn't enter something stupid
