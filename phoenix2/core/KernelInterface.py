@@ -71,6 +71,8 @@ class KernelInterface(object):
         self._fatal = False
         self.rateCounters = {}
         self.results = 0
+        self.accepted = 0
+        self.rejected = 0
         self.started = time.time()
 
     def getDeviceID(self):
@@ -209,6 +211,10 @@ class KernelInterface(object):
             d = self.core.connection.sendResult(formattedResult)
             def callback(accepted):
                 self.core.logger.dispatch(ResultLog(self, hash, accepted))
+                if accepted:
+                    self.accepted += 1
+                else:
+                    self.rejected += 1
             d.addCallback(callback)
             return True
         else:

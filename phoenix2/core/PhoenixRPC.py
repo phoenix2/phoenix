@@ -195,6 +195,8 @@ class PhoenixRPC(Resource):
                 device['meta'] = interface.meta
                 device['uptime'] = int(time.time() - interface.started)
                 device['results'] = interface.results
+                device['accepted'] = interface.accepted
+                device['rejected'] = interface.rejected
             else:
                 disabled = self.core.config.get(miner, 'disabled', bool, False)
 
@@ -207,6 +209,8 @@ class PhoenixRPC(Resource):
                 device['meta'] = {}
                 device['uptime'] = 0
                 device['results'] = 0
+                device['accepted'] = 0
+                device['rejected'] = 0
 
             devices.append(device)
 

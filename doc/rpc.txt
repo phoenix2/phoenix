@@ -23,6 +23,8 @@ listdevices() # Returns an array of devices in this format:
  'meta': {'key1':'value1', 'key2':'value2'},
  'uptime': seconds,
  'results': 24690
+ 'accepted': 24680
+ 'rejected': 10
 }
 
 getlogs(skip, limit) # Return logs, skipping 'skip' logs (if skip is negative,
