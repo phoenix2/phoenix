@@ -8,8 +8,8 @@ setup(name='phoenix',
       author='CFSworks & jedi95',
       url='http://github.com/phoenix2',
       packages=find_packages(),
-      package_data={'phoenix2': ['kernels/*/*.py',
-                                 'kernels/*/*.cl',
+      package_data={'phoenix2': ['plugins/*/*.py',
+                                 'plugins/*/*.cl',
                                  'www/TODO'
                                 ]},
       entry_points={
