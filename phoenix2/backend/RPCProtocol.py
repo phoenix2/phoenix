@@ -53,7 +53,7 @@ class HTTPBase(object):
     def closeConnection(self):
         if self.connection is not None:
             if self.connection.sock is not None:
-                self.connection.sock._sock.close()
+                self.connection.sock._sock.shutdown(socket.SHUT_RDWR)
             try:
                 self.connection.close()
             except (AttributeError):
