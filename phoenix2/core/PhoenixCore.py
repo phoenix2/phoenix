@@ -36,6 +36,7 @@ from .PhoenixLogger import *
 from .KernelInterface import KernelInterface
 from .PhoenixConfig import PhoenixConfig
 from .PhoenixRPC import PhoenixRPC
+from .PluginInterface import PluginInterface
 
 class PhoenixCore(object):
     """The root-level object of a Phoenix mining instance."""
@@ -64,7 +65,7 @@ class PhoenixCore(object):
 
         self.pluginModules = {}
 
-        self.pluginIntf = None # TODO
+        self.pluginIntf = PluginInterface(self)
         self.plugins = {}
 
         self.kernels = {}
