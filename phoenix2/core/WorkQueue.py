@@ -283,7 +283,6 @@ class WorkQueue(object):
         newWU = WorkUnit(wu)
 
         # Increment the timestamp
-        self.logger.debug('Rolling time')
         newWU.timestamp += 1
 
         # Reset the download time to the original WU's

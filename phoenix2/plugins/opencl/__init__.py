@@ -39,7 +39,7 @@ class KernelData(object):
     execution.
     """
 
-    def __init__(self, nr, rateDivisor, aggression, gOffset):
+    def __init__(self, nr, rateDivisor, aggression):
         # Prepare some raw data, converting it into the form that the OpenCL
         # function expects.
         data = np.array(
@@ -54,14 +54,9 @@ class KernelData(object):
 
         #compute bases for each iteration
         self.base = [None] * self.iterations
-        if gOffset:
-            self.baseNum = [None] * self.iterations
 
         for i in range(self.iterations):
-            if gOffset:
-                self.baseNum[i] = (nr.base / rateDivisor) + (i * self.size)
-            self.base[i] = pack('I',
-                (nr.base/rateDivisor) + (i * self.size))
+            self.base[i] = pack('I', (nr.base/rateDivisor) + (i * self.size))
 
         #set up state and precalculated static data
         self.state = np.array(
@@ -452,7 +447,7 @@ class PhoenixKernel(object):
         if self.FASTLOOP:
             self.updateIterations()
 
-        kd = KernelData(nr, self.rateDivisor, self.AGGRESSION, self.GOFFSET)
+        kd = KernelData(nr, self.rateDivisor, self.AGGRESSION)
         return kd
 
     def postprocess(self, output, nr):
@@ -474,7 +469,7 @@ class PhoenixKernel(object):
     def mineThread(self):
         for data in self.qr:
             for i in range(data.iterations):
-                offset = (data.baseNum[i],) if self.GOFFSET else None
+                offset = (unpack('I', data.base[i])[0],) if self.GOFFSET else None
                 self.kernel.search(
                     self.commandQueue, (data.size, ), (self.WORKSIZE, ),
                     data.state[0], data.state[1], data.state[2], data.state[3],
